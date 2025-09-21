@@ -1,0 +1,23 @@
+{
+  "listeners": [
+    {
+      "address": "0.0.0.0",
+      "port": 8080
+    }
+  ],
+  "app": {
+    "threads_num": 4,
+    "document_root": "./",
+    "logroot": "./",
+    "log_level": "DEBUG"
+  },
+  "redis_clients": [
+    {
+      "name": "default",
+      "host": "${REDIS_HOST}",
+      "port": "${REDIS_PORT?int}",
+      "db": "${REDIS_DB?int}",
+      "number_of_connections": 2
+    }
+  ]
+}

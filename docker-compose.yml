@@ -1,0 +1,39 @@
+version: "3.9"
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    command: start --log debug --bind 0.0.0.0:8000 --auth --user root --pass root file:/data/surreal.db
+    ports:
+      - "8000:8000"
+    environment:
+      - SURREAL_LOG=debug
+    volumes:
+      - surreal-data:/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+
+  api:
+    build: .
+    depends_on:
+      - surrealdb
+      - redis
+    environment:
+      SURREAL_URL: http://surrealdb:8000
+      SURREAL_NS: app
+      SURREAL_DB: dashboard
+      SURREAL_USER: root
+      SURREAL_PASS: root
+      JWT_SECRET: dev_super_secret_change_me
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+    ports:
+      - "8080:8080"
+    command: ["/srv/drgn_surreal", "--config=/srv/config.json"]
+
+volumes:
+  surreal-data:
