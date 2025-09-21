@@ -5,6 +5,7 @@
 #include <openssl/rand.h>
 #include <sstream>
 #include <iomanip>
+#include <openssl/sha.h>
 
 namespace crypto {
 
@@ -24,6 +25,12 @@ inline std::vector<unsigned char> from_hex(const std::string& s) {
 }
 
 inline void random_bytes(unsigned char* buf, size_t n) { RAND_bytes(buf, (int)n); }
+
+inline std::string random_token(size_t bytes = 32) {
+    std::vector<unsigned char> buf(bytes);
+    random_bytes(buf.data(), buf.size());
+    return to_hex(buf);
+}
 
 inline std::string hash_password_pbkdf2(const std::string& password, int iterations = 150000) {
     unsigned char salt[16];
@@ -55,6 +62,21 @@ inline bool verify_password_pbkdf2(const std::string& password, const std::strin
     unsigned char diff = 0;
     for (size_t i=0;i<dk.size();++i) diff |= dk[i] ^ dk_expected[i];
     return diff == 0;
+}
+
+inline std::string sha256_hex(const std::string& data) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, data.data(), data.size());
+    SHA256_Final(hash, &ctx);
+    std::vector<unsigned char> v(hash, hash + SHA256_DIGEST_LENGTH);
+    return to_hex(v);
+}
+
+inline std::string bcrypt_style_hash(const std::string& secret) {
+    // For API keys/secrets where we only need a fast hash (not password storage) we reuse SHA256 hex.
+    return sha256_hex(secret);
 }
 
 } // namespace crypto
