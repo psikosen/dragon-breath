@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <cctype>
 
 using namespace drogon;
 
@@ -22,6 +23,13 @@ static std::string b64(const std::string& in) {
     if (valb>-6) out.push_back(b[((val<<8)>>(valb+8))&0x3F]);
     while (out.size()%4) out.push_back('=');
     return out;
+}
+
+static Json::Value firstRow(const Json::Value& res) {
+    if (res.isArray() && res.size() > 0 && res[0]["result"].isArray() && res[0]["result"].size() > 0) {
+        return res[0]["result"][0];
+    }
+    return Json::Value(Json::nullValue);
 }
 
 SurrealClient::SurrealClient() {
@@ -64,10 +72,7 @@ Json::Value SurrealClient::selectOneByEmail(const std::string& emailNorm) {
     ss << "LET $email := string::lower(string::trim('" << drogon::utils::escapeHtml(emailNorm) << "'));"
        << "SELECT * FROM user WHERE email_norm = $email LIMIT 1;";
     auto res = exec(ss.str());
-    if (res.isArray() && res.size() > 0 && res[0]["result"].isArray() && res[0]["result"].size() > 0) {
-        return res[0]["result"][0];
-    }
-    return Json::Value(Json::nullValue);
+    return firstRow(res);
 }
 
 Json::Value SurrealClient::createUser(const std::string& email, const std::string& emailNorm,
@@ -79,8 +84,74 @@ Json::Value SurrealClient::createUser(const std::string& email, const std::strin
        << "password_hash = '" << drogon::utils::escapeHtml(passwordHash) << "', "
        << "role = '" << drogon::utils::escapeHtml(role) << "';";
     auto res = exec(ss.str());
-    if (res.isArray() && res.size() > 0 && res[0]["result"].isArray() && res[0]["result"].size() > 0) {
-        return res[0]["result"][0];
+    auto row = firstRow(res);
+    if (!row.isNull()) {
+        return row;
     }
     throw std::runtime_error("Failed to create user");
+}
+
+std::string SurrealClient::sanitizeId(const std::string& id) {
+    std::string out;
+    out.reserve(id.size());
+    for (char c : id) {
+        if (std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_' || c == ':') {
+            out.push_back(c);
+        }
+    }
+    if (out.empty()) {
+        throw std::runtime_error("Invalid id");
+    }
+    return out;
+}
+
+Json::Value SurrealClient::selectById(const std::string& table, const std::string& id) {
+    auto safeId = sanitizeId(id);
+    std::stringstream ss;
+    if (safeId.rfind(table + ":", 0) == 0) {
+        ss << "SELECT * FROM " << table << " WHERE id = '" << drogon::utils::escapeHtml(safeId) << "' LIMIT 1;";
+    } else {
+        ss << "SELECT * FROM " << table << " WHERE id = " << table << ":'" << drogon::utils::escapeHtml(safeId) << "' LIMIT 1;";
+    }
+    auto res = exec(ss.str());
+    return firstRow(res);
+}
+
+Json::Value SurrealClient::createRecord(const std::string& table, const Json::Value& content) {
+    std::stringstream ss;
+    ss << "CREATE " << table << " CONTENT " << drogon::utils::toString(content) << ";";
+    auto res = exec(ss.str());
+    auto row = firstRow(res);
+    if (!row.isNull()) return row;
+    throw std::runtime_error("Failed to create record");
+}
+
+Json::Value SurrealClient::mergeRecord(const std::string& table, const std::string& id, const Json::Value& content) {
+    auto safeId = sanitizeId(id);
+    std::stringstream ss;
+    if (safeId.rfind(table + ":", 0) == 0) {
+        ss << "UPDATE '" << drogon::utils::escapeHtml(safeId) << "' MERGE " << drogon::utils::toString(content) << ";";
+    } else {
+        ss << "UPDATE " << table << ":'" << drogon::utils::escapeHtml(safeId) << "' MERGE " << drogon::utils::toString(content) << ";";
+    }
+    auto res = exec(ss.str());
+    return firstRow(res);
+}
+
+Json::Value SurrealClient::softDelete(const std::string& table, const std::string& id) {
+    auto safeId = sanitizeId(id);
+    std::stringstream ss;
+    std::string target;
+    if (safeId.rfind(table + ":", 0) == 0) {
+        target = "'" + drogon::utils::escapeHtml(safeId) + "'";
+    } else {
+        target = table + ":'" + drogon::utils::escapeHtml(safeId) + "'";
+    }
+    ss << "UPDATE " << target << " MERGE { status: 'disabled', deleted_at: time::now() };";
+    auto res = exec(ss.str());
+    return firstRow(res);
+}
+
+Json::Value SurrealClient::listWithQuery(const std::string& query) {
+    return exec(query);
 }

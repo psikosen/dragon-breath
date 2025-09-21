@@ -15,6 +15,17 @@ add_executable(drgn_surreal
     src/filters/AuthFilter.cc
     src/controllers/AuthController.cc
     src/controllers/UserController.cc
+    src/controllers/RbacController.cc
+    src/controllers/ProjectController.cc
+    src/controllers/OpsController.cc
+    src/controllers/SessionController.cc
+    src/controllers/ApiKeyController.cc
+    src/controllers/WebhookController.cc
+    src/controllers/NotificationController.cc
+    src/controllers/FileController.cc
+    src/controllers/SearchController.cc
+    src/controllers/TaskController.cc
+    src/controllers/HealthController.cc
 )
 
 target_include_directories(drgn_surreal PRIVATE ${OPENSSL_INCLUDE_DIR})
