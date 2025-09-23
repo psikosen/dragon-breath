@@ -7,9 +7,27 @@ public:
     ADD_METHOD_TO(AuthController::registerUser, "/api/auth/register", drogon::Post);
     ADD_METHOD_TO(AuthController::login, "/api/auth/login", drogon::Post);
     ADD_METHOD_TO(AuthController::logout, "/api/auth/logout", drogon::Post, "AuthFilter");
+    ADD_METHOD_TO(AuthController::refresh, "/api/auth/refresh", drogon::Post);
+    ADD_METHOD_TO(AuthController::forgotPassword, "/api/auth/forgot-password", drogon::Post);
+    ADD_METHOD_TO(AuthController::resetPassword, "/api/auth/reset-password", drogon::Post);
+    ADD_METHOD_TO(AuthController::verifyEmail, "/api/auth/verify-email", drogon::Post);
+    ADD_METHOD_TO(AuthController::jwks, "/api/auth/jwks", drogon::Get);
+    ADD_METHOD_TO(AuthController::totpEnable, "/api/auth/totp/enable", drogon::Post, "AuthFilter");
+    ADD_METHOD_TO(AuthController::totpVerify, "/api/auth/totp/verify", drogon::Post, "AuthFilter");
+    ADD_METHOD_TO(AuthController::totpDisable, "/api/auth/totp/disable", drogon::Post, "AuthFilter");
+    ADD_METHOD_TO(AuthController::backupCodes, "/api/auth/backup-codes", drogon::Post, "AuthFilter");
     METHOD_LIST_END
 
     void registerUser(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
     void login(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
     void logout(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void refresh(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void forgotPassword(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void resetPassword(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void verifyEmail(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void jwks(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void totpEnable(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void totpVerify(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void totpDisable(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
+    void backupCodes(const drogon::HttpRequestPtr& req, std::function<void (const drogon::HttpResponsePtr &)> &&callback);
 };

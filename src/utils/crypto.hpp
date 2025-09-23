@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <stdexcept>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <sstream>
@@ -24,6 +25,41 @@ inline std::vector<unsigned char> from_hex(const std::string& s) {
 }
 
 inline void random_bytes(unsigned char* buf, size_t n) { RAND_bytes(buf, (int)n); }
+
+inline std::string sha256_hex(const std::string& data) {
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if (!ctx) {
+        throw std::runtime_error("EVP_MD_CTX_new failed");
+    }
+    std::vector<unsigned char> hash(EVP_MAX_MD_SIZE);
+    unsigned int len = 0;
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1 ||
+        EVP_DigestUpdate(ctx, data.data(), data.size()) != 1 ||
+        EVP_DigestFinal_ex(ctx, hash.data(), &len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        throw std::runtime_error("sha256 computation failed");
+    }
+    EVP_MD_CTX_free(ctx);
+    return to_hex(std::vector<unsigned char>(hash.begin(), hash.begin() + len));
+}
+
+inline std::string random_token_hex(size_t bytes = 32) {
+    std::vector<unsigned char> buf(bytes);
+    random_bytes(buf.data(), buf.size());
+    return to_hex(buf);
+}
+
+inline std::string random_alphanum(size_t length) {
+    static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    std::vector<unsigned char> buf(length);
+    random_bytes(buf.data(), buf.size());
+    std::string out;
+    out.reserve(length);
+    for (auto b : buf) {
+        out.push_back(alphabet[b % (sizeof(alphabet) - 1)]);
+    }
+    return out;
+}
 
 inline std::string hash_password_pbkdf2(const std::string& password, int iterations = 150000) {
     unsigned char salt[16];

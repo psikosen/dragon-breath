@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <stdexcept>
 
 using namespace drogon;
 
@@ -83,4 +84,71 @@ Json::Value SurrealClient::createUser(const std::string& email, const std::strin
         return res[0]["result"][0];
     }
     throw std::runtime_error("Failed to create user");
+}
+
+Json::Value SurrealClient::firstResult(const Json::Value& res) const {
+    if (res.isArray() && !res.empty()) {
+        const auto& item = res[0];
+        if (item.isMember("result") && item["result"].isArray() && !item["result"].empty()) {
+            return item["result"][0];
+        }
+    }
+    return Json::Value(Json::nullValue);
+}
+
+std::string SurrealClient::toJsonString(const Json::Value& value) const {
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";
+    return Json::writeString(builder, value);
+}
+
+Json::Value SurrealClient::selectById(const std::string& table, const std::string& id) {
+    if (id.find('"') != std::string::npos || id.find('\'') != std::string::npos || id.find(';') != std::string::npos) {
+        throw std::runtime_error("invalid id characters");
+    }
+    std::stringstream ss;
+    ss << "SELECT * FROM " << table << ":" << id << " LIMIT 1;";
+    auto res = exec(ss.str());
+    return firstResult(res);
+}
+
+Json::Value SurrealClient::createRecord(const std::string& table, const std::string& id, const Json::Value& content) {
+    if (id.find('"') != std::string::npos || id.find('\'') != std::string::npos || id.find(';') != std::string::npos) {
+        throw std::runtime_error("invalid id characters");
+    }
+    std::stringstream ss;
+    ss << "CREATE " << table << ":" << id << " CONTENT " << toJsonString(content) << ";";
+    auto res = exec(ss.str());
+    return firstResult(res);
+}
+
+Json::Value SurrealClient::updateRecord(const std::string& table, const std::string& id, const Json::Value& content) {
+    if (id.find('"') != std::string::npos || id.find('\'') != std::string::npos || id.find(';') != std::string::npos) {
+        throw std::runtime_error("invalid id characters");
+    }
+    std::stringstream ss;
+    ss << "UPDATE " << table << ":" << id << " MERGE " << toJsonString(content) << ";";
+    auto res = exec(ss.str());
+    return firstResult(res);
+}
+
+void SurrealClient::recordAudit(const std::string& userId,
+                                const std::string& action,
+                                const std::string& resourceType,
+                                const std::string& resourceId,
+                                const Json::Value& metadata) {
+    Json::Value payload;
+    payload["user_id"] = userId;
+    payload["action"] = action;
+    payload["resource_type"] = resourceType;
+    payload["resource_id"] = resourceId;
+    payload["metadata"] = metadata;
+    payload["created_at"] = "time::now()";
+    // created_at should be set by Surreal; but to keep time format, use expression via query
+    std::stringstream ss;
+    Json::Value withoutTime = payload;
+    withoutTime.removeMember("created_at");
+    ss << "LET $payload = " << toJsonString(withoutTime) << ";";
+    ss << "CREATE audit_log CONTENT merge($payload, { created_at: time::now() });";
+    exec(ss.str());
 }
