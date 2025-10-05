@@ -52,6 +52,20 @@ curl -X POST http://localhost:8080/api/auth/register \
   -d '{"email":"admin@example.com","password":"secret"}'
 ```
 
+
+## gRPC API
+
+- Service: `dragonbreath.grpc.UserService` listening on port `50051` by default.
+- `GetUser(GetUserRequest)` → returns a sanitized user profile (`id`, `email`, `role`, timestamps).
+
+Example using [grpcurl](https://github.com/fullstorydev/grpcurl):
+
+```bash
+grpcurl -plaintext -d '{"id":"user:01H..."}' localhost:50051 dragonbreath.grpc.UserService/GetUser
+```
+
+Configure the listener with `GRPC_LISTEN_ADDR` (defaults to `0.0.0.0:50051`).
+
 ## Config
 
 See `config/config.json`. Override via env vars for Surreal, Redis, JWT secret.

@@ -31,8 +31,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
+      GRPC_LISTEN_ADDR: 0.0.0.0:50051
     ports:
       - "8080:8080"
+      - "50051:50051"
     command: ["/srv/drgn_surreal", "--config=/srv/config.json"]
 
 volumes:
